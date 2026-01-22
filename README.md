@@ -1,4 +1,4 @@
 # Introduce
 This repositiry contains my notes for learning Kubernetes
-# Enviroment
+# Environment
 Version: 1.28.15

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: securitycontext-capabilities-demo
+spec:
+  containers:
+  - name: demo
+    image: docker.m.daocloud.io/ubuntu:26.04
+    command: ["/bin/sh", "-c"]
+    args: 
+      - |
+        # 1. 确保安装了工具
+        apt-get update && apt-get install -y iptables
+        
+        # 2. 刷新 shell 路径哈希（针对 sh）
+        hash -r 
+        
+        # 3. 使用绝对路径执行，避免路径找不到的问题
+        IPT_PATH=/usr/sbin/iptables
+        if [ -f "$IPT_PATH" ]; then
+          echo "Using $IPT_PATH to apply rules..."
+          iptables -t nat -A PREROUTING -p tcp --dport 8080 -j REDIRECT --to-port 80
+        else
+          echo "Error: iptables not found at $IPT_PATH even after install!"
+          exit 1
+        fi
+        
+        echo "Rule applied successfully."
+        tail -f /dev/null
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN", "NET_BIND_SERVICE"]
+        drop: ["CHOWN"]

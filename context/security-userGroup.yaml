@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: securitycontext-capabilities-demo
+spec:
+  containers:
+  - name: demo
+    image: docker.m.daocloud.io/busybox:1.37.0
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+      sleep 99999
+    securityContext:
+      runAsGroup: 1001
+      runAsUser: 1001
+      capabilities:
+        add: ["NET_ADMIN", "AUDIT_CONTROL"]

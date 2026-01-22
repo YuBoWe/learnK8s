@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-httpget-demo
+  namespace: default
+  labels:
+    name: readiness-httpget-demo
+spec:
+  containers:
+  - name: demo
+    image: docker.m.daocloud.io/library/nginx:stable-alpine3.23
+    imagePullPolicy: IfNotPresent
+    readinessProbe:
+      httpGet:
+        path: '/'
+        port: 80
+        scheme: HTTP
+      initialDelaySeconds: 15
+      timeoutSeconds: 2
+      periodSeconds: 5
+      failureThreshold: 3
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: demo
+  name: demo
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 80-80
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    name: readiness-httpget-demo
+  type: LoadBalancer
+status:
+  loadBalancer: {}

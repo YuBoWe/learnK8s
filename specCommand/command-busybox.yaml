@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo
+  namespace: default
+spec:
+  containers:
+  - name: busybox
+    image: docker.m.daocloud.io/busybox:1.37.0
+    command:
+    - '/bin/sh'
+    - "-c"
+    - "sleep 99999"
+    imagePullPolicy: IfNotPresent
+  restartPolicy: OnFailure

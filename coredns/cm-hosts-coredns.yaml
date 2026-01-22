@@ -1,0 +1,35 @@
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        hosts {
+          10.0.0.135 master1.k8s.com
+          10.0.0.136 master2.k8s.com
+          10.0.0.137 worker1.k8s.com
+          10.0.0.138 worker2.k8s.com
+          10.0.0.139 worker3.k8s.com
+          fallthrough
+        }
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+kind: ConfigMap
+metadata:
+  namespace: kube-system
+  name: coredns

@@ -1,0 +1,64 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wordpress
+  labels:
+    app: wp
+spec:
+  containers:
+  - name: wordpress
+    image: docker.m.daocloud.io/wordpress:php8.1-apache
+    imagePullPolicy: IfNotPresent
+    readinessProbe:
+      httpGet:
+        path: '/'
+        port: 80
+        scheme: HTTP
+      initialDelaySeconds: 60
+      timeoutSeconds: 5
+      periodSeconds: 10
+      failureThreshold: 3
+    env:
+    - name: WORDPRESS_DB_HOST
+      value: mysql-svc
+    - name: WORDPRESS_DB_USER
+      valueFrom:
+        secretKeyRef:
+          name: mysql-secret
+          key: WORDPRESS_DB_USER
+    - name: WORDPRESS_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: mysql-secret
+          key: WORDPRESS_DB_PASSWORD
+    - name: WORDPRESS_DB_NAME
+      valueFrom:
+        secretKeyRef:
+          name: mysql-secret
+          key: WORDPRESS_DB_NAME
+    volumeMounts:
+    - name: data
+      mountPath: /var/www/html/
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: wordpress-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: wordpress
+  name: wordpress
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 80-80
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: wp
+  type: LoadBalancer

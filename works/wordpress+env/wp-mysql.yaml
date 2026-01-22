@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blog
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo
+  labels:
+    app: db
+  namespace: blog
+spec:
+  containers:
+  - name: mysql
+    image: docker.m.daocloud.io/mysql:8
+    env:
+    - name: MYSQL_ROOT_PASSWORD
+      value: weiowow
+    - name: MYSQL_DATABASE
+      value: wordpress
+    - name: MYSQL_USER
+      value: weixx
+    - name: MYSQL_PASSWORD
+      value: weiowow
+    imagePullPolicy: IfNotPresent
+  restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mysql-svc
+  name: mysql-svc
+  namespace: blog
+spec:
+  ports:
+  - name: 3306-3306
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    app: db
+  type: ClusterIP

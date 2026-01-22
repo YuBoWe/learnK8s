@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  namespace: test
+  labels:
+    run: curl
+  name: curl
+spec:
+  containers:
+  - image: docker.m.daocloud.io/alpine/curl:8.17.0
+    name: curl
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        sleep 99999
+  restartPolicy: Always

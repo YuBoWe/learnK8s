@@ -28,7 +28,7 @@ Follow the deployment of the Strimzi cluster operator:
 
 Create an apache kafka cluster:
 
-`kubectl apply -f https://github.com/strimzi/strimzi-kafka-operator/blob/0.50.0/examples/kafka/kafka-ephemeral.yaml`
+`kubectl apply -f https://github.com/strimzi/strimzi-kafka-operator/blob/0.50.0/examples/kafka/kafka-ephemeral.yaml -n kafka`
 
 Send and receive messages:
 > With the cluster running, run a simple producer to send messages to a Kafka topic (the topic is automatically created):

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+spec:
+  replicas: 2 # 部署两个副本实现高可用
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - name: wordpress
+        image: docker.m.daocloud.io/wordpress:php8.1-apache
+        ports:
+        - containerPort: 80
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: "proxysql-svc:6033"  # 重点：连 ProxySQL 而不是直连 MySQL
+        - name: WORDPRESS_DB_USER
+          value: "root"               # 对应你之前在 ProxySQL 里的配置
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: root-password
+        - name: WORDPRESS_DB_NAME
+          value: "wordpress"
+        volumeMounts:
+        - name: wp-data
+          mountPath: /var/www/html
+      volumes:
+      - name: wp-data
+        persistentVolumeClaim:
+          claimName: wp-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-svc
+spec:
+  selector:
+    app: wordpress
+  ports:
+  - port: 80
+    targetPort: 80

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-entry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-entry
+  template:
+    metadata:
+      labels:
+        app: nginx-entry
+    spec:
+      containers:
+      - name: nginx
+        image: docker.m.daocloud.io/nginx:stable-alpine3.23
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/conf.d # 覆盖掉默认配置
+      volumes:
+      - name: config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-lb-svc
+  annotations:
+    # 核心：指定使用 OpenELB
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx-entry
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80

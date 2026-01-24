@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-demo
+spec:
+  template:
+    spec:
+      containers:
+      - name: myjob
+        image: docker.m.daocloud.io/busybox:1.37.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c", "sleep 60"]
+      restartPolicy: Never
+  completions: 2 # the number of successfully running Pods
+  ttlSecondsAfterFinished: 3600 # Specifies the duration to wait before deleting a finished Job and its Pods, regardless of whether the Job succeeds or fails.
+  backoffLimit: 3 # Specifies the number of retries allowed before the Job is marked as failed.
+  activeDeadlineSeconds: 300 # Specifies the maximum duration the Job is allowed to run (in seconds).
+  parallelism: 2 # Specifies the number of Pods running in parallel
+

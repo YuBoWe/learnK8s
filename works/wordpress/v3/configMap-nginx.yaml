@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    upstream wordpress_backend {
+        server wordpress-svc:80; # 指向 WordPress 的 Service 名字
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        # 增加上传限制，否则 WordPress 上传大图会报 413
+        client_max_body_size 64M;
+
+        location / {
+            proxy_pass http://wordpress_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # 解决 WordPress 登录后的重定向循环问题
+            proxy_redirect off;
+        }
+
+        # 缓存静态资源（可选，提升速度）
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+            proxy_pass http://wordpress_backend;
+            expires max;
+            log_not_found off;
+        }
+    }

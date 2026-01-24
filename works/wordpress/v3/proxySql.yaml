@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxysql
+  template:
+    metadata:
+      labels:
+        app: proxysql
+    spec:
+      containers:
+      - name: proxysql
+        image: docker.m.daocloud.io/proxysql/proxysql:3.0.5
+        ports:
+        - containerPort: 6033 # SQL 服务端口（应用连这里）
+        - containerPort: 6032 # 管理端口（配置连这里）
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxysql-svc
+spec:
+  selector:
+    app: proxysql
+  ports:
+  - name: sql
+    port: 6033
+  - name: admin
+    port: 6032

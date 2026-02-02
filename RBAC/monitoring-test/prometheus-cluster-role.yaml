@@ -1,0 +1,9 @@
+# prometheus-cluster-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-read-all
+rules:
+- apiGroups: [""] # 核心 API 组
+  resources: ["pods", "services", "endpoints", "nodes", "configmaps", "namespaces"]
+  verbs: ["get", "list", "watch"]

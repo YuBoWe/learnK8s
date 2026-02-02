@@ -1,0 +1,64 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: ops-mongo
+  namespace: mongodb
+spec:
+  # 副本集成员数量，建议 3 个实现高可用
+  members: 3
+  type: ReplicaSet
+  # 推荐使用 6.0 系列，兼容性较好
+  version: "6.0.5"
+  security:
+    authentication:
+      modes: ["SCRAM"]
+  users:
+    - name: admin
+      db: admin
+      passwordSecretRef:
+        name: mongo-admin-pw # 指向创建的 Secret
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+      scramCredentialsSecretName: ops-mongo-scram
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongod
+              resources:
+                limits:
+                  cpu: "500m"
+                  memory: "1Gi" # 针对2G 内存节点的优化限制
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            storageClassName: nfs-csi # 必须匹配NFS StorageClass
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-external
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    # 这里的标签必须对应上面 metadata.name
+    app: ops-mongo-svc
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+data:
+  master.cnf: |
+    [mysqld]
+    log-bin
+    server-id=1
+  slave.cnf: |
+    [mysqld]
+    server-id=2  # Slave 的 ID 会在启动脚本中动态修改

@@ -1,0 +1,11 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg-daemonset  #Gateway 资源会引用它 
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: custom-proxy  # 必须指向你刚才 apply 成功的那个 EnvoyProxy 的名字
+    namespace: envoy-gateway-system

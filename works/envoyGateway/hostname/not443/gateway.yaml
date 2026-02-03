@@ -1,0 +1,15 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-gateway
+  namespace: default
+spec:
+  gatewayClassName: eg-daemonset
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    hostname: "nginx.fakecyber.com" # 👈 指定此监听器处理的域名
+    allowedRoutes:
+      namespaces:
+        from: All

@@ -1,0 +1,28 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: custom-proxy
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      # 控制 DaemonSet 的部署逻辑
+      envoyDaemonSet:
+        pod:
+          nodeSelector:
+            gateway: "true"
+        container:
+          image: docker.m.daocloud.io/envoyproxy/envoy:v1.33.0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      # 👇 修正后的 Service 注解位置
+      envoyService:
+        type: LoadBalancer
+        annotations:
+          lb.kubesphere.io/v1alpha1: openelb

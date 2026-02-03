@@ -12,7 +12,7 @@ parameters:
   #server: nfs.magedu.com
   share: /
   #share: /data
-reclaimPolicy: Delete
+reclaimPolicy: Retain
 volumeBindingMode: Immediate
 #mountOptions:
 #  - hard

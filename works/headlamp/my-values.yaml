@@ -1,0 +1,10 @@
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    memory: 128Mi
+
+service:
+  type: LoadBalancer
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb

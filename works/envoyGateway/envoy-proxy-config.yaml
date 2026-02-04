@@ -10,8 +10,17 @@ spec:
       # 控制 DaemonSet 的部署逻辑
       envoyDaemonSet:
         pod:
+          # 1. 强制只调度到你打了标签的 Master 节点
           nodeSelector:
             gateway: "true"
+          # 2. 关键修改：添加容忍度，允许 Pod 运行在 Master 节点上
+          tolerations:
+            - key: "node-role.kubernetes.io/control-plane"
+              operator: "Exists"
+              effect: "NoSchedule"
+            - key: "node-role.kubernetes.io/master"
+              operator: "Exists"
+              effect: "NoSchedule"
         container:
           image: docker.m.daocloud.io/envoyproxy/envoy:v1.33.0
           resources:
@@ -21,7 +30,7 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-      # 👇 修正后的 Service 注解位置
+      # Service 配置保持不变
       envoyService:
         type: LoadBalancer
         annotations:

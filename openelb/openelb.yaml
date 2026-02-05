@@ -1118,6 +1118,7 @@ spec:
             topologyKey: kubernetes.io/hostname
       containers:
       - args:
+        - --enable-bgp=false
         - --metrics-addr=:50052
         - --webhook-port=443
         - --leader-elect

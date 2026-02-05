@@ -7,6 +7,16 @@ data:
     [mysqld]
     log-bin
     server-id=1
+    # --- 内存优化开始 ---
+    innodb_buffer_pool_size=256M
+    innodb_log_buffer_size=16M
+    max_connections=100
+    # --- 内存优化结束 ---
   slave.cnf: |
     [mysqld]
     server-id=2  # Slave 的 ID 会在启动脚本中动态修改
+    # --- 内存优化开始 ---
+    innodb_buffer_pool_size=256M
+    innodb_log_buffer_size=16M
+    max_connections=100
+    # --- 内存优化结束 ---

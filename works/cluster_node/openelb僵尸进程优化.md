@@ -48,26 +48,9 @@ ps -f -p 3510347
 ```
 kill -9 3428288
 ```
-查看openelb的ds,就发现了忘记把BGP禁用了（layer2模式）,顺便优化配置
-```sh
-kubectl edit ds openelb-speaker -n openelb-system
-```
-```yaml
-    containers:
-      - args:
-        - --api-hosts=:50051
-        - --enable-keepalived-vip=false
-        - --enable-layer2=true
-        - --enable-bgp=false  # 强制关闭 BGP 模块，防止产生 gobgp 僵尸
 
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "100Mi"
-          limits:
-            cpu: "200m"
-            memory: "250Mi" # 2GB 的 Worker 建议不要给超过 300Mi
-```
+
+```sh
 观察滚动更新
 ```sh
 kubectl get pod -n openelb-system -w

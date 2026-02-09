@@ -29,8 +29,28 @@ spec:
         - name: readWriteAnyDatabase
           db: admin
       scramCredentialsSecretName: ops-mongo-scram
+
+  # --- 核心修改区：所有资源配置必须包裹在 statefulSet.spec 之下 ---
   statefulSet:
     spec:
+      # 1. 存储卷定义 (必须移到这里，否则报 unknown field)
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            storageClassName: openebs-hostpath
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+        - metadata:
+            name: logs-volume
+          spec:
+            storageClassName: openebs-hostpath
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
       template:
         spec:
           initContainers:
@@ -38,7 +58,7 @@ spec:
               image: docker.m.daocloud.io/busybox:1.37.0
               command: ["sh", "-c", "chown -R 999:999 /data && chown -R 999:999 /var/log/mongodb-mms-automation"]
               securityContext:
-                runAsUser: 0 # 只有 root 才有权限 chown
+                runAsUser: 0
               volumeMounts:
                 - name: data-volume
                   mountPath: /data
@@ -50,6 +70,11 @@ spec:
             runAsGroup: 999
           containers:
             - name: mongod
+              volumeMounts:
+                - name: data-volume
+                  mountPath: /data
+                - name: logs-volume
+                  mountPath: /var/log/mongodb-mms-automation
               resources:
                 limits:
                   cpu: "500m"
@@ -57,20 +82,3 @@ spec:
                 requests:
                   cpu: "200m"
                   memory: "512Mi"
-      volumeClaimTemplates:
-        - metadata:
-            name: data-volume
-          spec:
-            storageClassName: openebs-hostpath
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 10Gi
-        - metadata:
-            name: logs-volume # 必须加上这个，否则会自动使用默认SC导致挂起
-          spec:
-            storageClassName: openebs-hostpath
-            accessModes: ["ReadWriteOnce"]
-            resources:
-              requests:
-                storage: 2Gi # 日志不需要太大

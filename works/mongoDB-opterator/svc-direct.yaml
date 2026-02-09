@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-0-direct
+  namespace: mongodb
+  labels:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/component: direct-access
+spec:
+  type: ClusterIP
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-0  # 核心：精准锁定 0 号 Pod
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-1-direct
+  namespace: mongodb
+  labels:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/component: direct-access
+spec:
+  type: ClusterIP
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-1  # 核心：精准锁定 1 号 Pod
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-2-direct
+  namespace: mongodb
+  labels:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/component: direct-access
+spec:
+  type: ClusterIP
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-2  # 核心：精准锁定 2 号 Pod
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017

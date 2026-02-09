@@ -1,0 +1,58 @@
+---
+# 1. 对应 ops-mongo-0 (端口 27017)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-0
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+    # 如果你想固定 IP 为 10.0.0.141，取消下面注释 (前提是 OpenELB 配置允许)
+    # eip.openelb.kubesphere.io/v1alpha1: 10.0.0.141
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-0
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017
+      targetPort: 27017
+
+---
+# 2. 对应 ops-mongo-1 (端口 27018)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-1
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-1
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017 # 外部端口
+      targetPort: 27017 # 容器内部始终是 27017
+
+---
+# 3. 对应 ops-mongo-2 (端口 27019)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-2
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-2
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017 # 外部端口
+      targetPort: 27017

@@ -17,7 +17,7 @@
 
 基于容器化的 NFS 服务器提供存储支持，底层数据映射至宿主机磁盘，确保 Pod 漂移后数据不丢失。
 
-- **StorageClass 名称**: `nfs-csi`
+- **StorageClass 名称**: `openebs-hostpath`
 
 ### 2. 部署 MongoDB Operator
 
@@ -40,15 +40,20 @@ kubectl apply -f https://raw.githubusercontent.com/mongodb/mongodb-kubernetes/1.
 YAML
 
 ```
-apiVersion: mongodbcommunity.mongodb.com/v1
+piVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
   name: ops-mongo
   namespace: mongodb
 spec:
-  members: 3          # 3节点副本集实现高可用
+  members: 3
   type: ReplicaSet
-  version: "6.0.5"    # 兼容性最佳的社区版本
+  version: "6.0.5"
+  replicaSetHorizons:
+    - external: "mongo-0-lb.local:27017"
+    - external: "mongo-1-lb.local:27017"
+    - external: "mongo-2-lb.local:27017"
+
   security:
     authentication:
       modes: ["SCRAM"]
@@ -62,26 +67,116 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
+        - name: readWriteAnyDatabase
+          db: admin
       scramCredentialsSecretName: ops-mongo-scram
   statefulSet:
     spec:
       template:
         spec:
+          initContainers:
+            - name: check-and-fix-permissions
+              image: docker.m.daocloud.io/busybox:1.37.0
+              command: ["sh", "-c", "chown -R 999:999 /data && chown -R 999:999 /var/log/mongodb-mms-automation"]
+              securityContext:
+                runAsUser: 0 # 只有 root 才有权限 chown
+              volumeMounts:
+                - name: data-volume
+                  mountPath: /data
+                - name: logs-volume
+                  mountPath: /var/log/mongodb-mms-automation
+          securityContext:
+            fsGroup: 999
+            runAsUser: 999
+            runAsGroup: 999
           containers:
             - name: mongod
               resources:
-                limits: { cpu: "500m", memory: "1Gi" } # 针对2G内存节点优化
-                requests: { cpu: "200m", memory: "512Mi" }
+                limits:
+                  cpu: "500m"
+                  memory: "1Gi"
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+      # --- 修正后的存储模板 ---
       volumeClaimTemplates:
         - metadata:
             name: data-volume
           spec:
-            storageClassName: nfs-csi
+            storageClassName: openebs-hostpath
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
                 storage: 10Gi
+        - metadata:
+            name: logs-volume # 必须加上这个，否则会自动使用默认SC导致挂起
+          spec:
+            storageClassName: openebs-hostpath
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi # 日志不需要太大
+---
+# 1. 对应 ops-mongo-0 (端口 27017)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-0
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+    protocol.openelb.kubesphere.io/v1alpha1: tcp
+    # 如果你想固定 IP 为 10.0.0.141，取消下面注释 (前提是 OpenELB 配置允许)
+    # eip.openelb.kubesphere.io/v1alpha1: 10.0.0.141
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-0
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017
+      targetPort: 27017
+
+---
+# 2. 对应 ops-mongo-1 (端口 27018)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-1
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-1
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017 # 外部端口
+      targetPort: 27017 # 容器内部始终是 27017
+
+---
+# 3. 对应 ops-mongo-2 (端口 27019)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-ext-2
+  namespace: mongodb
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  selector:
+    statefulset.kubernetes.io/pod-name: ops-mongo-2
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017 # 外部端口
+      targetPort: 27017
 ```
+> 由于需要对接集群外部的连接，所以这里开启horizon split，并配置了三个lb，直接功能是外部访问时，会询问集群哪个是primary节点（只有primary节点可写），然后通过给的horizon的配置的域名或者ip直接返回，但是来的时候经过了openelb，mongodb将其识别为集群内部流量，返回的时候会按照集群内部的svc来返回，我的解决方案就是利用集群外部的DNS将集群内部的域名加上去。
 
 ### 4. 外部接入配置 (OpenELB)
 

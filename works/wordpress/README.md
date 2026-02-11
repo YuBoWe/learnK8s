@@ -502,6 +502,21 @@ SHOW SLAVE STATUS\G;
 -- Seconds_Behind_Master	0	同步延迟：数值越小表示同步越实时。0 表示完全同步
 ```
 
+> 创建monitor用户，proxySQL需要这个用户连接数据库来监控
+```sql
+-- 创建与 ProxySQL 变量匹配的用户
+CREATE USER IF NOT EXISTS 'monitor'@'%' IDENTIFIED BY 'monitor';
+-- 授予监控权限
+GRANT REPLICATION CLIENT, USAGE ON *.* TO 'monitor'@'%';
+FLUSH PRIVILEGES;
+```
+
+> 将从库设置为只读(分别在1和2上执行)
+```sql
+SET GLOBAL read_only = 1;
+-- 建议同时开启这个，防止拥有 SUPER 权限的用户误写
+SET GLOBAL super_read_only = 1;
+```
 
 
 ## 部署proxysql实现msyql集群的读写分离
@@ -591,20 +606,29 @@ SAVE MYSQL SERVERS TO DISK;
 
 ③ 设置读写分离规则（Query Rules）
 
-这是最核心的一步：通过正则表达式识别 SQL 语句。
+这是最核心的一步：通过正则表达式识别 SQL 语句，查看监控配置
 
 ```sql
 -- 1. 强制所有 SELECT 语句走 20 号从库组
-INSERT INTO mysql_query_rules(rule_id, active, match_digest, destination_hostgroup, apply)
-VALUES (1, 1, '^SELECT.*', 20, 1);
+INSERT INTO mysql_query_rules (rule_id, active, match_digest, destination_hostgroup, apply)
+VALUES (10, 1, '^SELECT.*FOR UPDATE$', 10, 1);
 
 -- 2. 特殊情况：SELECT FOR UPDATE 必须走 10 号主库组（权重更高）
-INSERT INTO mysql_query_rules(rule_id, active, match_digest, destination_hostgroup, apply)
-VALUES (2, 1, '^SELECT.*FOR UPDATE$', 10, 1);
+INSERT INTO mysql_query_rules (rule_id, active, match_digest, destination_hostgroup, apply) 
+VALUES (20, 1, '^SELECT.*', 20, 1);
 
 -- 注意：所有非 SELECT 语句（INSERT/UPDATE）默认会走剩下的组，或者你可以显式定义。
 LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
+
+-- 1. 检查监控开关是否打开 (应该是 true)
+SELECT variable_name, variable_value FROM global_variables WHERE variable_name = 'mysql-monitor_enabled';
+
+-- 2. 检查监控间隔 (默认通常是 2000ms，如果设为 0 就不会监控)
+SELECT variable_name, variable_value FROM global_variables WHERE variable_name LIKE 'mysql-monitor_read_only_interval';
+
+-- 3. 检查监控用户是否配置到了全局变量中 (这是最常见的遗漏点)
+SELECT variable_name, variable_value FROM global_variables WHERE variable_name IN ('mysql-monitor_username', 'mysql-monitor_password');
 ```
 
 > 配置应用访问账户:ProxySQL 需要知道哪些用户允许通过它连接数据库
@@ -616,8 +640,21 @@ INSERT INTO mysql_users(username, password, default_hostgroup) VALUES ('root', '
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS TO DISK;
 ```
+> 看看 ProxySQL 现在的“认知”,激活读写监控逻辑
+```sql
+SELECT hostname, read_only, time_start_us FROM monitor.mysql_server_read_only_log;
 
+SELECT * FROM main.mysql_replication_hostgroups;
 
+INSERT INTO mysql_replication_hostgroups (writer_hostgroup, reader_hostgroup, comment) VALUES (10, 20, 'cluster1');
+
+LOAD MYSQL SERVERS TO RUNTIME;
+
+SAVE MYSQL SERVERS TO DISK;
+
+SELECT hostname, read_only, time_start_us FROM monitor.mysql_server_read_only_log;
+SELECT * FROM main.mysql_replication_hostgroups;
+```
 
 ## 部署wordpress
 

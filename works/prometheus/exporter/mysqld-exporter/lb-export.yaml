@@ -1,0 +1,57 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lb-master-exporter
+  name: lb-master-exporter
+  namespace: ops
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 9104-9104
+    port: 9104
+    protocol: TCP
+    targetPort: 9104
+  selector:
+    instance: master
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lb-slave-1-exporter
+  name: lb-slave-1-exporter
+  namespace: ops
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 9105-9105
+    port: 9105
+    protocol: TCP
+    targetPort: 9105
+  selector:
+    instance: slave1
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lb-slave-2-exporter
+  name: lb-slave-2-exporter
+  namespace: ops
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 9106-9106
+    port: 9106
+    protocol: TCP
+    targetPort: 9106
+  selector:
+    instance: slave2
+  type: LoadBalancer

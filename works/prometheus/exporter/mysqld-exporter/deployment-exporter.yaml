@@ -1,0 +1,123 @@
+# --- Master Exporter ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter-master
+  namespace: ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-exporter
+      instance: master
+  template:
+    metadata:
+      labels:
+        app: mysql-exporter
+        instance: master
+    spec:
+      containers:
+      - name: exporter
+        image: docker.m.daocloud.io/prom/mysqld-exporter:v0.18.0
+        args:
+        # 1. 指定配置文件位置
+        - "--config.my-cnf=/etc/mysql-exporter/.my.cnf"
+        # 2. 指定要监控的 Master 数据库地址
+        - "--mysqld.address=mysql-0.mysql-headless.ops.svc.cluster.local:3306"
+        # 3. 开启常用收集项
+        - "--collect.global_status"
+        - "--collect.info_schema.innodb_metrics"
+        ports:
+        - containerPort: 9104
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mysql-exporter
+      volumes:
+      - name: config
+        secret:
+          secretName: mysql-exporter-config
+
+---
+# --- Slave 1 Exporter ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter-slave1
+  namespace: ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-exporter
+      instance: slave1
+  template:
+    metadata:
+      labels:
+        app: mysql-exporter
+        instance: slave1
+    spec:
+      containers:
+      - name: exporter
+        image: docker.m.daocloud.io/prom/mysqld-exporter:v0.18.0
+        args:
+        - "--config.my-cnf=/etc/mysql-exporter/.my.cnf"
+        # 指定 Slave 1 地址
+        - "--mysqld.address=mysql-1.mysql-headless.ops.svc.cluster.local:3306"
+        - "--collect.slave_status"
+        - "--collect.global_status"
+        - "--collect.info_schema.innodb_metrics"
+        - "--collect.binlog_size"
+        - "--collect.engine_innodb_status"
+        - "--collect.perf_schema.memory_events"
+        - "--collect.info_schema.innodb_tablespaces"
+        - "--collect.perf_schema.eventsstatements"
+        # 显式指定监听端口以匹配你原来的 containerPort (默认是9104)
+        - "--web.listen-address=:9105"
+        ports:
+        - containerPort: 9105
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mysql-exporter
+      volumes:
+      - name: config
+        secret:
+          secretName: mysql-exporter-config
+
+---
+# --- Slave 2 Exporter ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-exporter-slave2
+  namespace: ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-exporter
+      instance: slave2
+  template:
+    metadata:
+      labels:
+        app: mysql-exporter
+        instance: slave2
+    spec:
+      containers:
+      - name: exporter
+        image: docker.m.daocloud.io/prom/mysqld-exporter:v0.18.0
+        args:
+        - "--config.my-cnf=/etc/mysql-exporter/.my.cnf"
+        # 指定 Slave 2 地址
+        - "--mysqld.address=mysql-2.mysql-headless.ops.svc.cluster.local:3306"
+        - "--collect.slave_status"
+        - "--collect.global_status"
+        - "--web.listen-address=:9106"
+        ports:
+        - containerPort: 9106
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mysql-exporter
+      volumes:
+      - name: config
+        secret:
+          secretName: mysql-exporter-config

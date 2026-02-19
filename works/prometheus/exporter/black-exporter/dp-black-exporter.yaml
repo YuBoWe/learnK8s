@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      # --- 关键配置：调度到指定标签的节点 ---
+      nodeSelector:
+        exporter: black
+      
+      containers:
+      - name: blackbox-exporter
+        image: docker.m.daocloud.io/prom/blackbox-exporter:v0.28.0
+        args:
+        - "--config.file=/etc/blackbox-exporter/blackbox.yml" # 使用自定义路径
+        ports:
+        - containerPort: 9115
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /etc/blackbox-exporter
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9115
+      volumes:
+      - name: config
+        configMap:
+          name: blackbox-config

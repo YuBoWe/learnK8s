@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lb-black-exporter
+  name: lb-black-exporter
+  namespace: prometheus
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  ports:
+  - name: 9115-9115
+    port: 9115
+    protocol: TCP
+    targetPort: 9115
+  selector:
+    app: blackbox-exporter
+  type: LoadBalancer

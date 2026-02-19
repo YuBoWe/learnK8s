@@ -1,0 +1,18 @@
+## 部署black-exporter
+black-exporter是prometheus为从外部监控应用服务的状态而被用其来发送探针的exporter
+通常用来监控DNS、网址等,检测的target定义在prometheus的yml上，black-exporter的配置主要是用什么方法探测，探测时的配置等
+```sh
+ctr -n k8s.io images pull prom/blackbox-exporter:v0.28.0
+```
+
+```sh
+kubectl create ns prometheus
+kubectl apply -f cm-black-exporter.yaml
+kubectl apply -f dp-black-exporter.yaml
+```
+
+## 部署loadbalancer（可选）
+如果prometheus部署在集群外部，就部署loadbalancer将exporter暴露给prometheus
+```sh
+kubectl apply -f lb-black-exporter.yaml
+```

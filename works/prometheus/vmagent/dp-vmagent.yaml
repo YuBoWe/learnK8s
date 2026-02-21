@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-data-pvc
+spec:
+  storageClassName: openebs-hostpath # 使用 openebs-hostpath
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmagent
+  namespace: monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vmagent
+  template:
+    metadata:
+      labels:
+        app: vmagent
+    spec:
+      serviceAccountName: vmagent
+      containers:
+        - name: vmagent
+          image: docker.m.daocloud.io/victoriametrics/vmagent:v1.136.0-rc0-scratch
+          args:
+            - "-promscrape.config=/etc/vmagent/prometheus.yml"
+            # 关键：推送到外部 Prometheus 地址
+            - "-remoteWrite.url=http://10.0.0.211:9090/api/v1/write"
+            # 断网缓存路径和大小
+            - "-remoteWrite.tmpDataPath=/tmp/vmagent-cache"
+            - "-remoteWrite.maxDiskUsagePerURL=10GB"
+          ports:
+            - containerPort: 8429
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vmagent
+            - name: cache
+              mountPath: /tmp/vmagent-cache
+      volumes:
+        - name: cache
+          persistentVolumeClain:
+            clainName: local-data-pvc
+        - name: config
+          configMap:
+            name: vmagent-config

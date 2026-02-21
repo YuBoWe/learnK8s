@@ -1,0 +1,44 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: velero-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: velero
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: velero-backup-expert
+rules:
+  # 1. 允许读取全集群所有资源进行备份
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  # 2. 允许管理 Velero 自身的备份任务（需要写入权限）
+  - apiGroups: ["velero.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  # 3. 允许处理存储相关的快照（如果以后用到云盘）
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: velero-expert-binding
+subjects:
+  - kind: User
+    name: velero  # 必须匹配你证书里的 CN
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: velero-backup-expert
+  apiGroup: rbac.authorization.k8s.io

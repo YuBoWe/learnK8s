@@ -1,0 +1,108 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: monitor
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: openebs-hostpath
+  resources:
+    requests:
+      storage: 5Gi # 个人学习 2G 足够用很久
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      serviceAccountName: grafana-sa
+      nodeSelector:
+        monitor: grafana
+      # 重点：OpenEBS LocalPV 绑定后，Pod 会自动调度到创建了数据的节点
+      securityContext:
+        fsGroup: 472 # 必须，否则 Grafana 无法写入 OpenEBS 目录
+      containers:
+      - name: grafana
+        image: docker.m.daocloud.io/grafana/grafana:12.4.0-22081664032
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              name: grafana-admin-secret
+              key: admin-user
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-admin-secret
+              key: admin-password
+        resources:
+          requests:
+            memory: "150Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi" # 严格限制
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: storage
+          mountPath: /var/lib/grafana
+        - name: sc-dashboard-volume # 挂载 sidecar 扫描的目录
+          mountPath: /var/lib/grafana/dashboards
+        - name: config
+          mountPath: /etc/grafana/grafana.ini
+          subPath: grafana.ini
+        - name: config
+          mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
+      - name: grafana-sc-dashboard
+        image: docker.m.daocloud.io/kiwigrid/k8s-sidecar:2.5.0
+        env:
+        - name: LABEL
+          value: "grafana_dashboard" # 只有带这个标签的 ConfigMap 才会同步
+        - name: FOLDER
+          value: "/var/lib/grafana/dashboards" # 同步到这个目录
+        - name: RESOURCE
+          value: "configmap"
+        volumeMounts:
+        - name: sc-dashboard-volume
+          mountPath: /var/lib/grafana/dashboards
+      volumes:
+      - name: sc-dashboard-volume # 这是一个临时存储，用于容器间共享 JSON
+        emptyDir: {}
+      - name: storage
+        persistentVolumeClaim:
+          claimName: grafana-pvc
+      - name: config
+        configMap:
+          name: grafana-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-svc
+  namespace: monitor
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb
+spec:
+  type: LoadBalancer
+  ports:
+    - name: 3000-3000
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: grafana

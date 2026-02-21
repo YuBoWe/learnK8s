@@ -1,0 +1,30 @@
+apiVersion: v1                                                                                                                       
+kind: Namespace
+metadata:
+  name: monitor
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: monitor
+data:
+  grafana.ini: |
+    [analytics]
+    reporting_enabled = false
+    [auth.anonymous]
+    enabled = true    # 个人用：开启匿名访问（可选）
+    role = Admin      # 匿名访问权限设为管理员（可选）
+    [security]
+    allow_embedding = true # 允许被嵌入其他网页
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'sidecar-provider'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards

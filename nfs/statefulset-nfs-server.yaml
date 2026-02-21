@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server
+  namespace: nfs
+  labels:
+    app: nfs-server
+  annotations:
+    lb.kubesphere.io/v1alpha1: openelb # 继续使用你的 OpenELB
+spec:
+  type: LoadBalancer
+  selector:
+    app: nfs-server
+  ports:
+    - name: nfs-tcp
+      port: 2049
+      targetPort: 2049
+      protocol: TCP
+    - name: rpcbind-tcp
+      port: 111
+      targetPort: 111
+      protocol: TCP
+    - name: rpcbind-udp
+      port: 111
+      targetPort: 111
+      protocol: UDP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nfs-server
+  namespace: nfs
+spec:
+  serviceName: "nfs-server"
+  replicas: 1 # NFS Server 通常只能 1 副本
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      # 改进点 1：将 NFS 锁死在 master1 节点，防止数据找不到
+      nodeSelector:
+        kubernetes.io/hostname: "worker4.k8s.com"
+      containers:
+        - name: nfs-server
+          image: docker.1ms.run/openebs/nfs-server-alpine:0.11.x-ci
+          env:
+            - name: SHARED_DIRECTORY
+              value: "/exports"
+            - name: FILEPERMISSIONS_UID
+              value: "0"
+            - name: FILEPERMISSIONS_GID
+              value: "0"
+            - name: FILEPERMISSIONS_MODE
+              value: "0755"
+          volumeMounts:
+            - mountPath: /exports
+              name: nfs-vol
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 2049
+            - containerPort: 111
+              protocol: UDP
+            - containerPort: 111
+              protocol: TCP
+      volumes:
+        - name: nfs-vol
+          # 改进点 2：虽然是 hostPath，但由于有了 STS 和 nodeSelector
+          # 这个 path 变得“相对安全”了，因为 Pod 不会再飘移
+          hostPath:
+            path: /data/nfs-storage 
+            type: DirectoryOrCreate
